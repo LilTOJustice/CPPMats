@@ -60,7 +60,6 @@ class Mat {
     Mat();
     Mat(size_t rows, size_t cols); //create empty matrix
     Mat(const Mat &other); //copy cstor
-    Mat(Mat &other);
     Mat(const std::initializer_list<std::initializer_list<double>> &list);
     Mat(const std::initializer_list<double> &list);
     Mat(const double d);
