@@ -27,17 +27,17 @@ const Mat Mat::operator[](const range r) const { //access range of rows of matri
     Mat retval;
     if (r.row_or_col == C) {
         retval.resize(rows(), r.length());
-        for (size_t i = 0; i < retval.rows(); i++) {
-            for (size_t j = 0; j < retval.cols(); j++) {
-                retval[i][j] = (*this)(i)[j+r.start()];
+        for (size_t i = 1; i <= retval.rows(); i++) {
+            for (size_t j = 1; j <= retval.cols(); j++) {
+                retval[i][j] = (*this)(i)[j+r.start()-1];
             }
         }
     }
     else {
         retval.resize(r.length(), cols());
-        for (size_t i = 0; i < retval.rows(); i++) {
-            for (size_t j = 0; j < retval.cols(); j++) {
-                retval[i][j] = (*this)(i+r.start())[j];
+        for (size_t i = 1; i <= retval.rows(); i++) {
+            for (size_t j = 1; j <= retval.cols(); j++) {
+                retval[i][j] = (*this)(i+r.start()-1)[j];
             }
         }
     }
@@ -86,6 +86,22 @@ void Mat::resize(size_t rows, size_t cols) {
     }
 }
 
+Mat Mat::minor(size_t row, size_t col) const { //get the minor of the matrix
+    if (!isMat(*this) || rows() != cols()) throw std::runtime_error("Minor can only be called on square matrices!");
+    Mat retval(rows()-1, cols()-1);
+    size_t subrowindex = 1;
+    for (size_t i = 1; i <= rows(); i++) {
+        size_t subcolindex = 1;
+        for (size_t j = 1; j <= cols(); j++) {
+            if (i == row || j == col) { continue; }
+            retval[subrowindex][subcolindex] = (*this)(i)[j];
+            if (++subcolindex == retval.rows() + 1) subrowindex++;
+        }
+    }
+    return retval;
+}
+
+//Math operators
 Mat Mat::operator+(const Mat &m) const {
     if (rows() != m.rows() || cols() != m.cols()) throw std::runtime_error("Attempt to add two vectors of non-matching dimensions: " + std::to_string(rows()) + 'x' + std::to_string(cols()) + " and " + std::to_string(m.rows()) + 'x' + std::to_string(m.cols()));
     Mat retval = m;
@@ -101,10 +117,10 @@ Mat Mat::operator+=(const Mat &m) { return *this = *this + m; }
 
 Mat Mat::operator-(const Mat &m) const {
     if (rows() != m.rows() || cols() != m.cols()) throw std::runtime_error("Attempt to subtract two matrices of non-matching dimensions: " + std::to_string(rows()) + 'x' + std::to_string(cols()) + " and " + std::to_string(m.rows()) + 'x' + std::to_string(m.cols()));
-    Mat retval = m;
+    Mat retval = *this;
     for (size_t i = 0; i < retval.rows(); i++) {
         for (size_t j = 0; j < retval.cols(); j++) {
-            retval.mat.at(i).at(j) -= (*this).mat.at(i).at(j);
+            retval.mat.at(i).at(j) -= m.mat.at(i).at(j);
         }
     }
     return retval;
@@ -115,6 +131,8 @@ Mat Mat::operator-() const { return *this*-1; }
 Mat Mat::operator-=(const Mat &m) { return *this = *this - m; }
 
 Mat Mat::operator*(const Mat &m) const { 
+    if (isScal(*this)) { return m*mat.at(0).at(0); } //allow 1x1 to be multiplied to any matrix
+    if (isScal(m)) { return *this * m.mat.at(0).at(0); }
     if (cols() != m.rows()) throw std::runtime_error("Attempt to multiply two matrices with invalid dimensions: " + std::to_string(rows()) + 'x' + std::to_string(cols()) + " and " + std::to_string(m.rows()) + 'x' + std::to_string(m.cols()));
     Mat retval(rows(), m.cols());
     for (size_t i = 0; i < rows(); i++) {
@@ -155,36 +173,74 @@ Mat Mat::operator/(const double scalar) const {
 
 Mat Mat::operator/=(const double scalar) { return *this = *this / scalar; }
 
-Mat Mat::operator^(const double exponent) const {
+Mat Mat::operator/(const Mat &m) const { //This only works if m is a 1x1
+    if (!isScal(m)) throw std::runtime_error("You can only divide two matrices if the second is a 1x1 (for now)");
+    return *this/m.mat.at(0).at(0);
+}
+
+Mat Mat::operator/=(const Mat &m) { return *this = *this / m; }
+
+Mat Mat::operator^(double exponent) const {
     Mat retval = *this;
     if (isScal(*this)) {
-        retval[0][0] = pow(retval[0][0], exponent);
+        retval[1][1] = pow(retval[1][1], exponent);
+    }
+    else if (isMat(*this)) {
+        if (rows() != cols()) throw std::runtime_error("Expected a nxn Mat, got " + std::to_string(rows()) + 'x' + std::to_string(cols()));
+        if (exponent == 0) return ident(rows());
+        if (exponent < 0.0) { //if exponent is negative, inverse matrix and flip sign
+            retval = inv(retval);
+            exponent *= -1;
+        }
+        //double int_part;
+        //if (std::modf(exponent, &int_part) == 0.0) { //Add this back when doubles are supported for matrices
+        int i_exponent = exponent; //cast to int for now
+        for (int i = 1; i < i_exponent; i++) { retval *= *this; }
+        //}
     }
     else throw std::runtime_error("^ operator is not supported with matrix of size " + std::to_string(rows()) + 'x' + std::to_string(cols()) + '!');
     return retval;
 }
 
-Mat Mat::operator^=(const double exponent) { return *this = *this ^ exponent; }
+Mat Mat::operator^=(double exponent) { return *this = *this ^ exponent; }
+
+Mat Mat::operator^(const Mat &m) const { //this will only work if m is a 1x1
+    if (!isScal(m)) throw std::runtime_error("You can only exponentiate two matricies if the second is a 1x1!");
+    return *this^m.mat.at(0).at(0);
+}
+Mat Mat::operator^=(const Mat &m) { return *this = *this ^ m; }
+
+//Comparison operators
+bool Mat::operator==(const Mat &other) {
+    if (rows() != other.rows() || cols() != other.cols()) return false;
+    for (size_t i = 1; i <= rows(); i++) {
+        for (size_t j = 1; j <= cols(); j++) {
+            if ((*this)(i)[j] != other(i)[j]) return false;
+        }
+    }
+    return true;
+}
+bool Mat::operator!=(const Mat &other) { return !(*this == other); }
 
 std::ostream& operator<< (std::ostream &lhs, const Mat &m) {
     lhs << m.rows() << 'x' << m.cols() << " =\n";
     if (m.rows() == 1 && m.cols() == 1) {
-        lhs << m(0)[0];
+        lhs << m(1)[1];
     }
     else if (m.rows() == 1) {
         lhs << '<';
-        for (size_t i = 0; i < m.cols(); i++) {
-            lhs << m(0)[i];
-            if (i < m.cols()-1) lhs << ", ";
+        for (size_t i = 1; i <= m.cols(); i++) {
+            lhs << m(1)[i];
+            if (i < m.cols()) lhs << ", ";
         }
         lhs << '>';
     }
     else {
-        for (size_t i = 0; i < m.rows(); i++) {
-            if (i) lhs << '\n';
+        for (size_t i = 1; i <= m.rows(); i++) {
+            if (i>1) lhs << '\n';
             lhs << "[\t";
-            for (size_t j = 0; j < m.cols(); j++) {
-                if (j) lhs << '\t';
+            for (size_t j = 1; j <= m.cols(); j++) {
+                if (j>1) lhs << '\t';
                 lhs << m(i)[j];
             }
             lhs << "\t]";
@@ -204,17 +260,38 @@ Mat operator/(const double scalar, const Mat &m) { return m/scalar; }
 Mat operator+(const double d, const Mat &m) { return m+d; }
 Mat operator-(const double d, const Mat &m) { return -m+d; }
 
+//Scalar Functions:
+double abs(const Mat &m) { //This function will calculate the abs of scalars, magnitude of vectors, and determinants of matrices all in one
+    if (!isScal(m)) throw std::runtime_error("Abs can only be called on a scalar!");
+    double retval = fabs(m(1)[1]);
+    return retval;
+}
+
 //Vector Functions:
+double mag(const Mat &m) {
+    if (!isVec(m)) throw std::runtime_error("Mag can only be called on a vector!");
+    double retval = 0;
+    if (m.rows() == 1) { //row vector 
+        for (size_t i = 1; i <= m.cols(); i++) retval += m(1)[i]*m(1)[i];
+        retval = sqrt(retval);
+    }
+    if (m.cols() == 1) { //column vector
+        for (size_t i = 1; i <= m.rows(); i++) retval += m(i)[1]*m(i)[1];
+        retval = sqrt(retval);
+    }
+    return retval;
+}
+
 Mat norm(const Mat &v) {
+    if (!isVec(v)) throw std::runtime_error("Normalize can only be called on a vector!");
     Mat retval = v;
-    double mag = abs(retval);
+    double magnitude = mag(retval);
     if (v.rows() == 1) { //row vector
-        for (size_t i = 0; i < retval.cols(); i++) retval[0][i] /= mag;
+        for (size_t i = 1; i <= retval.cols(); i++) retval[1][i] /= magnitude;
     }
     else if (v.cols() == 1) { //col vector
-        for (size_t i = 0; i < retval.rows(); i++) retval[i][0] /= mag;
+        for (size_t i = 1; i <= retval.rows(); i++) retval[i][1] /= magnitude;
     }
-    else throw std::runtime_error("Attempt to normalize a non-vector!");
     return retval;
 }
 
@@ -223,17 +300,17 @@ double sCross(const Mat &v1, const Mat &v2) { //scalar cross product
     if (v1.rows() != v2.rows() || v1.cols() != v2.cols()) throw std::runtime_error("Vector dimensions must match in cross product!");
     double retval = 0;
     if (v1.rows() == 1) { //row vectors
-        if (v1.cols() == 2) retval = v1(0)[0] * v2(0)[1] - v2(0)[0] * v1(0)[1]; //if 2d vector
-        else retval = abs(cross(v1,v2));
+        if (v1.cols() == 2) retval = v1(1)[1] * v2(1)[2] - v2(1)[1] * v1(1)[2]; //if 2d vector
+        else retval = mag(cross(v1,v2));
     }
     else { //col vectors
-        if (v1.rows() == 2) retval = v1(0)[0] * v2(1)[0] - v2(0)[0] * v1(1)[0]; //if 2d vector
-        else retval = abs(cross(v1,v2));
+        if (v1.rows() == 2) retval = v1(1)[1] * v2(2)[1] - v2(1)[1] * v1(2)[1]; //if 2d vector
+        else retval = mag(cross(v1,v2));
     }
     return retval;
 }
 
-Mat cross(const Mat &v1, const Mat &v2) { //TODO
+Mat cross(const Mat &v1, const Mat &v2) {
     if (!isVec(v1) || !isVec(v2)) throw std::runtime_error("Non-vector entered for cross product!");
     if (v1.rows() != v2.rows() || v1.cols() != v2.cols()) throw std::runtime_error("Vector dimensions must match in cross product!");
     if (v1.rows() > 3 || v1.cols() > 3) throw std::runtime_error("Cross product is only defined in 3-space!");
@@ -244,38 +321,38 @@ Mat cross(const Mat &v1, const Mat &v2) { //TODO
         retval.resize(1,3); //result is 3d row vec
         temp1.resize(1,3); //add kcomp to any 2d vecs
         temp2.resize(1,3);
-        combine[0] = temp1[0]; //transpose the col vectors so they can fit horizontally in the matrix
-        combine[1] = temp2[0];
-        for (size_t i = 0; i < 3; i++) {
+        combine[1] = temp1[1];
+        combine[2] = temp2[1];
+        for (size_t i = 1; i <= 3; i++) {
             Mat sub(2,2); //each sub will always be 2x2
-            for (size_t j = 1; j < 3; j++) {
-                size_t sub_colindex = 0;
-                for (size_t k = 0; k < 3; k++) {
+            for (size_t j = 1; j <= 2; j++) {
+                size_t sub_colindex = 1;
+                for (size_t k = 1; k <= 3; k++) {
                     if (k == i) continue;
-                    sub[j-1][sub_colindex++] = combine[j-1][k];
+                    sub[j][sub_colindex++] = combine[j][k];
                 }
             }
-            double new_val = abs(sub);
-            retval[0][i] = (i == 1 && new_val != 0 ? -1 : 1) * new_val; //middle is negative, but we dont want a -0
+            double new_val = det(sub);
+            retval[1][i] = (i == 2 && new_val != 0 ? -1 : 1) * new_val; //middle is negative, but we dont want a -0
         }
     }
     else { //col vectors
         retval.resize(3,1); //result is a 3d col vec
         temp1.resize(3,1); //add kcomp to any 2d vecs
         temp2.resize(3,1);
-        combine[0] = transpose(temp1)[0];
-        combine[1] = transpose(temp2)[0];
-        for (size_t i = 0; i < 3; i++) {
+        combine[1] = transpose(temp1)[1]; //transpose the col vectors so they can fit horizontally in the matrix
+        combine[2] = transpose(temp2)[1];
+        for (size_t i = 1; i <= 3; i++) {
             Mat sub(2,2); //each sub will always be 2x2
-            for (size_t j = 1; j < 3; j++) {
+            for (size_t j = 1; j <= 2; j++) {
                 size_t sub_colindex = 0;
-                for (size_t k = 0; k < 3; k++) {
+                for (size_t k = 1; k <= 3; k++) {
                     if (k == i) continue;
-                    sub[j-1][sub_colindex++] = combine[j-1][k];
+                    sub[j][sub_colindex++] = combine[j][k];
                 }
             }
-            double new_val = abs(sub);
-            retval[i][0] = (i == 1 && new_val != 0 ? -1 : 1) * new_val; //middle is negative, but we dont want a -0
+            double new_val = det(sub);
+            retval[i][1] = (i == 2 && new_val != 0 ? -1 : 1) * new_val; //middle is negative, but we dont want a -0
         }
     }
     return retval;
@@ -286,13 +363,13 @@ double dot(const Mat &v1, const Mat &v2) {
     if (v1.rows() != v2.rows() || v1.cols() != v2.cols()) throw std::runtime_error("Vector dimensions must match in dot product!");
     double retval = 0;
     if (v1.rows() == 1) { //row vectors
-        for (size_t i = 0; i < v1.cols(); i++) {
-            retval += v1(0)[i] * v2(0)[i];
+        for (size_t i = 1; i <= v1.cols(); i++) {
+            retval += v1(1)[i] * v2(1)[i];
         }
     }
     else { //col vectors
-        for (size_t i = 0; i < v1.rows(); i++) {
-            retval += v1(i)[0] * v2(i)[0];
+        for (size_t i = 1; i <= v1.rows(); i++) {
+            retval += v1(i)[1] * v2(i)[1];
         }
     }
     return retval;
@@ -300,8 +377,8 @@ double dot(const Mat &v1, const Mat &v2) {
 
 Mat transpose(const Mat &m) { //flip dimensions
     Mat retval(m.cols(), m.rows());
-    for (size_t i = 0; i < m.rows(); i++) {
-        for (size_t j = 0; j < m.cols(); j++) {
+    for (size_t i = 1; i <= m.rows(); i++) {
+        for (size_t j = 1; j <= m.cols(); j++) {
             retval[j][i] = m(i)[j];
         }
     }
@@ -310,50 +387,68 @@ Mat transpose(const Mat &m) { //flip dimensions
 
 Mat ident(const size_t size) { //returns an identity matrix with the equivalent size
     Mat retval(size,size);
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 1; i <= size; i++) {
         retval[i][i] = 1;
     }
     return retval;
 }
 
-double abs(const Mat &m) { //This function will calculate the abs of scalars, magnitude of vectors, and determinants of matrices all in one
-    if (m.rows() == 1) { //row vector (magnitude), incidentally calculates scalar absolute value if a 1x1 mat is entered
-        double retval = 0;
-        for (size_t i = 0; i < m.cols(); i++) retval += m(0)[i]*m(0)[i];
-        retval = sqrt(retval);
-        return retval;
-    }
-    if (m.cols() == 1) { //column vector(magnitude), would also calculate scalar abs
-        double retval = 0;
-        for (size_t i = 0; i < m.rows(); i++) retval += m(i)[0]*m(i)[0];
-        retval = sqrt(retval);
-        return retval;
-    }
-    if (m.rows() != m.cols()) throw std::runtime_error("Matrix passed in to determinant should be a square matrix, instead was " + std::to_string(m.rows()) + 'x' + std::to_string(m.cols()));
+Mat zero(const size_t size) { //returns a zero matrix with the equivalent size
+    return Mat(size,size);
+}
+
+
+double det(const Mat &m) {
+    if (!isMat(m) || m.rows() != m.cols()) throw std::runtime_error("Det can only be called on square matrices!");
     if (m.rows() == 2) { //2x2 matrix
-        double retval = m(0)[0]*m(1)[1] - m(1)[0]*m(0)[1];
+        double retval = m(1)[1]*m(2)[2] - m(2)[1]*m(1)[2];
         return retval;
-    }
-    //If larger than 2x2, split into submatrices and recurse (minor determinants method)
-    std::vector<std::pair<double,Mat>> sub_matrices; //store as pairs to remember what to scale determinants by
-    for (size_t i = 0; i < m.cols(); i++) { //go throw each column of top row
-        Mat sub(m.rows()-1, m.cols()-1); //new matrix will be n-1 x n-1
-        for (size_t j = 1; j < m.rows(); j++) { //skip row 0, these will be the determinant scale values
-            size_t sub_colindex = 0;
-            for (size_t k = 0; k < m.cols(); k++) {
-                if (k == i) continue;
-                sub[j-1][sub_colindex++] = m(j)[k];
-            }
-        }
-        sub_matrices.push_back({(i%2==0 ? 1 : -1) * m(0)[i], sub}); //dont forget to alternate signs
     }
     double retval = 0;
-    for (const std::pair<double, Mat> &p : sub_matrices) retval += p.first * abs(p.second);
+    //If larger than 2x2, split into minor submatrices and recurse (minor determinants method)
+    for (size_t i = 1; i <= m.cols(); i++) {
+        retval += (i%2==0 ? -1 : 1) * m(1)[i] * det(m.minor(1,i)); //add determinant of minor from top row scaled by minor coordinate and sign
+    }
+    return retval;
+}
+
+Mat inv(const Mat &m) { //Inverse of matrix
+    if (!isMat(m) || m.rows() != m.cols()) throw std::runtime_error("Inverse can only be called on square matrices!");
+    double deter = det(m);
+    if (deter == 0) throw std::runtime_error("Inverse called on a matrix with a determinant of 0!");
+    return adj(m)/deter;
+}
+
+Mat adj(const Mat &m) { //Adjoint matrix
+    if (!isMat(m) || m.rows() != m.cols()) throw std::runtime_error("Adjoint can only be called on square matrices!");
+    return transpose(cof(m));
+}
+
+Mat cof(const Mat &m) { //Cofactor matrix
+    if (!isMat(m) || m.rows() != m.cols()) throw std::runtime_error("Cofactor can only be called on square matrices!");
+    Mat retval(m.rows(),m.cols());
+    for (size_t i = 1; i <= m.rows(); i++) {
+        for (size_t j = 1; j <= m.cols(); j++) {
+            retval[i][j] = det(m.minor(i,j)) * ((i+j) % 2 == 0 ? 1 : -1);
+        }
+    }
     return retval;
 }
 
 void print(const Mat &m) {
     std::cout << m << std::endl;
+}
+
+//Mathy functions
+Mat exp(const Mat &m) { //matrix exponential
+    Mat retval(m.rows(),m.cols()), last;
+    unsigned int n = 0;
+    do {
+        last = retval;
+        retval += 1/tgamma(n+1) * (m^n);
+        n++;
+    } while (retval != last);
+    return retval;
 }
 
 //Misc functions
@@ -374,9 +469,9 @@ double Q_rsqrt( double number  ) //the classic
 
 Mat randIntMat(size_t rows, size_t cols, int min, int max) {
     Mat retval(rows, cols);
-    for (size_t i = 0; i < rows; i++) {
-        for (size_t j = 0; j < cols; j++) {
-            retval[i][j] = (rand() % (max + 1)) + min;
+    for (size_t i = 1; i <= rows; i++) {
+        for (size_t j = 1; j <= cols; j++) {
+            retval[i][j] = (rand() % (max-min + 1)) + min;
         }
     }
     return retval;

@@ -1,11 +1,18 @@
-a.out: demo.o mat.o 
-	g++ demo.o mat.o -O3
+CCFLAGS= -O3 -g
+test: test.o mat.o
+	g++ test.o mat.o $(CCFLAGS) -fsanitize=address
+
+demo: demo.o mat.o 
+	g++ demo.o mat.o $(CCFLAGS)
+
+test.o: test.cc mat.h
+	g++ -c test.cc $(CCFLAGS)
 
 demo.o: demo.cc mat.h
-	g++ -c demo.cc -O3
+	g++ -c demo.cc $(CCFLAGS)
 
 mat.o: mat.cc mat.h
-	g++ -c mat.cc -O3
+	g++ -c mat.cc $(CCFLAGS)
 
 clean:
 	rm *.o

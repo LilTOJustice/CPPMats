@@ -44,12 +44,12 @@ class matRow { //vector with limited functions
     inline void operator=(const std::initializer_list<T> &list) { v = list; }
     public:
     inline const T& operator[](size_t pos) const { 
-        if (pos >= v.size()) throw std::runtime_error("Attempt to access outside of matrix size!");
-        return v.at(pos); 
+        if (pos < 1 || pos > v.size()) throw std::runtime_error("Attempt to access outside of matrix size!");
+        return v.at(pos-1); //1-indexing
     }
     inline T& operator[](size_t pos) { 
-        if (pos >= v.size()) throw std::runtime_error("Attempt to access outside of matrix size!");
-        return v.at(pos); 
+        if (pos < 1 || pos > v.size()) throw std::runtime_error("Attempt to access outside of matrix size!");
+        return v.at(pos-1); //1-indexing
     }
 };
 
@@ -71,11 +71,12 @@ class Mat {
     const Mat& operator=(const std::initializer_list<std::initializer_list<double>> &list);
     const Mat& operator=(const std::initializer_list<double> &list);
     const Mat& operator=(const double d);
-    friend std::ostream& operator << (std::ostream &lhs, const Mat &m);
     size_t rows() const;
     size_t cols() const;
     void resize(size_t rows, size_t cols); //resize matrix, filling 0s in new spaces
+    Mat minor(size_t row, size_t col) const; //get the minor of the matrix
 
+    //Math operators
     Mat operator+(const Mat &m) const; //Matrix+Matrix
     Mat operator+=(const Mat &m);
     Mat operator-(const Mat &m) const; //Matrix-Matrix
@@ -87,8 +88,18 @@ class Mat {
     Mat operator*=(const double scalar);
     Mat operator/(const double scalar) const; //Matrix/scalar
     Mat operator/=(const double scalar);
-    Mat operator^(const double exponent) const; 
-    Mat operator^=(const double exponent);
+    Mat operator/(const Mat &m) const; //This only works if m is a 1x1
+    Mat operator/=(const Mat &m);
+    Mat operator^(double exponent) const; //doubles will only work on 1x1 scalar mats, if a double is attempted to be used, it will be casted to an int
+    Mat operator^=(double exponent);
+    Mat operator^(const Mat &m) const; //This only works if m is a 1x1
+    Mat operator^=(const Mat &m);
+
+    //Comparison operators
+    bool operator==(const Mat &other);
+    bool operator!=(const Mat &other);
+
+    friend std::ostream& operator << (std::ostream &lhs, const Mat &m);
 };
 //Identification
 bool isMat(const Mat &m);
@@ -101,8 +112,11 @@ Mat operator/(const double scalar, const Mat &m);
 Mat operator+(const double d, const Mat &m);
 Mat operator-(const double d, const Mat &m);
 
+//Scalar functions:
+double abs(const Mat &m); //abs of scalar
 
 //Vector functions:
+double mag(const Mat &m); //mag of vector
 Mat norm(const Mat &v);
 double dot(const Mat &v1, const Mat &v2);
 Mat cross(const Mat &v1, const Mat &v2);
@@ -111,11 +125,18 @@ double sCross(const Mat &v1, const Mat &v2); //scalar cross product, optimized f
 std::ostream& operator<< (std::ostream &lhs, const Mat &rhs);
 
 
-//Matrix Functions: 
+//Matrix functions: 
 Mat transpose(const Mat &v); //Flips dimensions
 Mat ident(const size_t size); //returns an identity matrix with the equivalent size
-double abs(const Mat &m); //abs of scalar, mag of vector, det of matrix, all with one function
+Mat zero(const size_t size); //returns a zero matrix with the equivalent size (this is the same as just calling Mat(size,size))
+double det(const Mat &m); //det of matrix
+Mat inv(const Mat &m); //Inverse of matrix
+Mat adj(const Mat &m); //Adjoint matrix
+Mat cof(const Mat &m); //Cofactor matrix
 void print(const Mat &m); //same as using cout
+
+//Mathy functions:
+Mat exp(const Mat &m); //matrix exponential
 
 //Misc functions:
 double Q_rsqrt(double number); //the classic

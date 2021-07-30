@@ -12,7 +12,6 @@
 //Everything is a matrix, including scalars and vectors
 
 int main() {
-    return 0;
     srand(time(0)); //randIntMat() uses rand() so dont forget to seed
     Mat m = randIntMat(2,2,0,5); //Create 2x2 matrix with random ints from 0 to 5
     Mat n = {{5.3,9.6},{0.1,8.5}}; //2x2 matrix
@@ -60,11 +59,14 @@ int main() {
     print(scalar^3); //raise matrix to a power (only support 1x1 matrices right now)
 
     std::cout << "Determinant of p:\n";
-    print(abs(p)); //abs is the det of a matrix, mag of a vector, and abs of a scalar
+    print(det(p));
+
+    std::cout << "Magnitude of rowvec:\n";
+    print(mag(rowvec));
 
     //Element access
     std::cout << "modified m:\n";
-    m[0][1] = 3; //row, column, 0-indexed
+    m[1][2] = 3; //row, column, 1-indexed
     std::cout << "modified rowvec:\n";
     rowvec>>2 = 57; //Instead of having to specify row and column, for vectors you can just use >>
     
@@ -73,7 +75,7 @@ int main() {
     Mat submatrix = largemat[range(2,5,R)]; //you can also grab a range of rows/cols from a matrix
     std::cout << "submatrix:\n";
     print(submatrix);
-    Mat subsubmatrix =  largemat[range(1,6,C)][range(2,4,R)][range(0,1,C)]; //Because each range access returns a Mat, you can stack as many accesses as you want, evaluates left to right
+    Mat subsubmatrix =  largemat[range(2,5,C)][range(1,3,R)][range(1,2,C)]; //Because each range access returns a Mat, you can stack as many accesses as you want, evaluates left to right
     std::cout << "subsubmatrix:\n";
     print(subsubmatrix); //test and see if you can guess the dimensions of this matrix before it prints
 }
