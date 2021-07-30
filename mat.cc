@@ -153,6 +153,17 @@ Mat Mat::operator/(const double scalar) const {
 
 Mat Mat::operator/=(const double scalar) { return *this = *this / scalar; }
 
+Mat Mat::operator^(const double exponent) const {
+    Mat retval = *this;
+    if (isScal(*this)) {
+        retval[0][0] = pow(retval[0][0], exponent);
+    }
+    else throw std::runtime_error("^ operator is not supported with matrix of size " + std::to_string(rows()) + 'x' + std::to_string(cols()) + '!');
+    return retval;
+}
+
+Mat Mat::operator^=(const double exponent) { return *this = *this ^ exponent; }
+
 std::ostream& operator<< (std::ostream &lhs, const Mat &m) {
     lhs << m.rows() << 'x' << m.cols() << " =\n";
     if (m.rows() == 1 && m.cols() == 1) {

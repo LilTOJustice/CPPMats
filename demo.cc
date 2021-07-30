@@ -19,6 +19,7 @@ int main() {
     Mat rowvec = {26,1,3};  //3d row-vector
     Mat colvec = transpose(rowvec); //3d column-vector, transpose flips dimensions
     Mat scalar = 3.14; //Even scalars can be assigned to matrices, this makes a 1x1 matrix
+    scalar.resize(4,4); //you can also resize a matrix to any other size, new positions are 0-filled
     
     //Now lets print everything:
     std::cout << "m:\n";
@@ -34,6 +35,7 @@ int main() {
     std::cout << "scalar:\n";
     std::cout << scalar << std::endl; //you can also use ostreams
 
+    scalar.resize(1,1);
     //Matrix/Vector math:
 
     std::cout << "rowvec dot colvec transposed:\n"; //you can also use ostreams
@@ -51,8 +53,10 @@ int main() {
 
     m *= 2; //scale matrix
     rowvec *= 3; //scale vector
-    scalar *= 5; //scale... scalara
+    scalar *= 5; //scale... scalar
     Mat p = m+n; //add matrices of same dimension
+    std::cout << "scalar^3:\n";
+    print(scalar^3); //raise matrix to a power (only support 1x1 matrices right now)
 
     std::cout << "Determinant of p:\n";
     print(abs(p)); //abs is the det of a matrix, mag of a vector, and abs of a scalar

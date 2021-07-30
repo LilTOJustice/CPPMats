@@ -86,6 +86,8 @@ class Mat {
     Mat operator*=(const double scalar);
     Mat operator/(const double scalar) const; //Matrix/scalar
     Mat operator/=(const double scalar);
+    Mat operator^(const double exponent) const; 
+    Mat operator^=(const double exponent);
 };
 
 
