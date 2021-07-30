@@ -79,6 +79,7 @@ class Mat {
     Mat operator+(const Mat &m) const; //Matrix+Matrix
     Mat operator+=(const Mat &m);
     Mat operator-(const Mat &m) const; //Matrix-Matrix
+    Mat operator-() const; //-Matrix
     Mat operator-=(const Mat &m); 
     Mat operator*(const Mat &m) const; //Matrix*Matrix
     Mat operator*=(const Mat &m);
@@ -89,7 +90,16 @@ class Mat {
     Mat operator^(const double exponent) const; 
     Mat operator^=(const double exponent);
 };
+//Identification
+bool isMat(const Mat &m);
+bool isVec(const Mat &m);
+bool isScal(const Mat &m);
 
+//Commutative overloads
+Mat operator*(const double scalar, const Mat &m);
+Mat operator/(const double scalar, const Mat &m);
+Mat operator+(const double d, const Mat &m);
+Mat operator-(const double d, const Mat &m);
 
 
 //Vector functions:
@@ -100,9 +110,6 @@ double sCross(const Mat &v1, const Mat &v2); //scalar cross product, optimized f
 
 std::ostream& operator<< (std::ostream &lhs, const Mat &rhs);
 
-bool isMat(const Mat &m);
-bool isVec(const Mat &m);
-bool isScal(const Mat &m);
 
 //Matrix Functions: 
 Mat transpose(const Mat &v); //Flips dimensions

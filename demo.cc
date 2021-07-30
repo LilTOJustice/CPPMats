@@ -12,6 +12,7 @@
 //Everything is a matrix, including scalars and vectors
 
 int main() {
+    return 0;
     srand(time(0)); //randIntMat() uses rand() so dont forget to seed
     Mat m = randIntMat(2,2,0,5); //Create 2x2 matrix with random ints from 0 to 5
     Mat n = {{5.3,9.6},{0.1,8.5}}; //2x2 matrix

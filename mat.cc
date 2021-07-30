@@ -110,6 +110,8 @@ Mat Mat::operator-(const Mat &m) const {
     return retval;
 }
 
+Mat Mat::operator-() const { return *this*-1; }
+
 Mat Mat::operator-=(const Mat &m) { return *this = *this - m; }
 
 Mat Mat::operator*(const Mat &m) const { 
@@ -191,9 +193,16 @@ std::ostream& operator<< (std::ostream &lhs, const Mat &m) {
     return lhs;
 }
 
+//Identification
 bool isMat(const Mat &m) { return m.rows() > 1 && m.cols() > 1; }
 bool isVec(const Mat &m) { return (m.rows() > 1) ^ (m.cols() > 1); }
 bool isScal(const Mat &m) { return m.rows() == 1 && m.cols() == 1; }
+
+//Commutative overloads
+Mat operator*(const double scalar, const Mat &m) { return m*scalar; }
+Mat operator/(const double scalar, const Mat &m) { return m/scalar; }
+Mat operator+(const double d, const Mat &m) { return m+d; }
+Mat operator-(const double d, const Mat &m) { return -m+d; }
 
 //Vector Functions:
 Mat norm(const Mat &v) {
